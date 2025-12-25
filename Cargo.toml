@@ -1,0 +1,39 @@
+[package]
+name = "soroban-user-profile"
+version = "0.1.0"
+edition = "2024"
+license = "Apache-2.0"
+description = "Global user profile system for Soroban blockchain"
+repository = "https://github.com/wyhaines/soroban-user-profile"
+readme = "README.md"
+keywords = ["soroban", "stellar", "blockchain", "profile", "identity"]
+categories = ["no-std", "wasm"]
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[features]
+default = ["render"]
+render = ["dep:soroban-render-sdk"]
+testutils = ["soroban-sdk/testutils"]
+
+[dependencies]
+soroban-sdk = "22.0.0"
+soroban-render-sdk = { git = "https://github.com/wyhaines/soroban-render-sdk.git", optional = true }
+
+[dev-dependencies]
+soroban-sdk = { version = "22.0.0", features = ["testutils"] }
+
+[profile.release]
+opt-level = "z"
+overflow-checks = true
+debug = 0
+strip = "symbols"
+debug-assertions = false
+panic = "abort"
+codegen-units = 1
+lto = true
+
+[profile.release-with-logs]
+inherits = "release"
+debug-assertions = true
