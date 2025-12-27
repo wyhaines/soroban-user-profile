@@ -17,4 +17,7 @@ Thumbs.db
 # Test artifacts
 *.profraw
 
+# Environment files
+.deployed-contract.env
+
 CLAUDE.md

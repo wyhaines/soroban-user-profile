@@ -1,7 +1,7 @@
 [package]
 name = "soroban-user-profile"
 version = "0.1.0"
-edition = "2024"
+edition = "2021"
 license = "Apache-2.0"
 description = "Global user profile system for Soroban blockchain"
 repository = "https://github.com/wyhaines/soroban-user-profile"
@@ -19,7 +19,7 @@ testutils = ["soroban-sdk/testutils"]
 
 [dependencies]
 soroban-sdk = "22.0.0"
-soroban-render-sdk = { git = "https://github.com/wyhaines/soroban-render-sdk.git", optional = true }
+soroban-render-sdk = { path = "/media/wyhaines/home/wyhaines/ghq/github.com/wyhaines/soroban-render-sdk", optional = true }
 
 [dev-dependencies]
 soroban-sdk = { version = "22.0.0", features = ["testutils"] }
