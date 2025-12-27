@@ -462,9 +462,9 @@ pub fn render_profile_card(env: &Env, address: &Address) -> Bytes {
                 .raw_str("</span>")
                 .raw_str("</div>");
 
-            // Link to profile
+            // Link to profile (uses @profile alias for cross-contract navigation)
             md = md
-                .raw_str("<a href=\"render:/profile/u/")
+                .raw_str("<a href=\"render:@profile:/u/")
                 .raw(p.username)
                 .raw_str("\">View Profile</a>")
                 .raw_str("</div>");
@@ -483,9 +483,10 @@ pub fn render_profile_card_compact(env: &Env, address: &Address) -> Bytes {
 
     match profile {
         Some(p) if p.is_active() => {
+            // Uses @profile alias for cross-contract navigation
             MarkdownBuilder::new(env)
                 .raw_str("<span class=\"profile-compact\">")
-                .raw_str("<a href=\"render:/profile/u/")
+                .raw_str("<a href=\"render:@profile:/u/")
                 .raw(p.username.clone())
                 .raw_str("\">@")
                 .raw(p.username)
