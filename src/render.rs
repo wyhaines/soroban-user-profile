@@ -332,8 +332,10 @@ fn render_profile_by_username_with_return(
 
 /// Render a "Go Back" or "Back to Home" link based on return path.
 ///
-/// Supports both same-contract paths (e.g., "b/0/t/5") and cross-contract
-/// return paths (e.g., "@registry:/").
+/// Supports:
+/// - Same-contract paths (e.g., "b/0/t/5")
+/// - Cross-contract alias paths (e.g., "@registry:/")
+/// - Cross-contract explicit ID paths (e.g., "CXXX...:/")
 fn render_back_link<'a>(
     _env: &Env,
     md: MarkdownBuilder<'a>,
@@ -341,10 +343,12 @@ fn render_back_link<'a>(
 ) -> MarkdownBuilder<'a> {
     match return_path {
         Some(path) if !path.is_empty() => {
-            // Check if it's a cross-contract return path (starts with @)
+            // Check if it's a cross-contract return path
+            // - Starts with '@' = alias (e.g., @registry:/)
+            // - Starts with 'C' = contract ID (e.g., CXXX...://)
             let first_byte = path.get(0);
-            if first_byte == Some(b'@') {
-                // Cross-contract return - use path as-is (already includes @alias:path)
+            if first_byte == Some(b'@') || first_byte == Some(b'C') {
+                // Cross-contract return - use path as-is
                 md.raw_str("[Go Back](render:")
                     .raw(path.clone())
                     .raw_str(")")
