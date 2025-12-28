@@ -11,8 +11,18 @@ use crate::storage::ProfileKey;
 pub fn render(env: &Env, path: Option<String>, viewer: Option<Address>) -> Bytes {
     Router::new(env, path)
         .handle(b"/", |_| render_home(env, &viewer))
-        .or_handle(b"/register", |_| render_register_form(env, &viewer))
-        .or_handle(b"/edit", |_| render_edit_form(env, &viewer))
+        // Handle registration with return path: /register/from/{return_path}
+        .or_handle(b"/register/from/*", |req| {
+            let return_path = req.get_wildcard().unwrap_or_else(|| Bytes::new(env));
+            render_register_form_with_return(env, &viewer, Some(return_path))
+        })
+        .or_handle(b"/register", |_| render_register_form_with_return(env, &viewer, None))
+        // Handle edit with return path: /edit/from/{return_path}
+        .or_handle(b"/edit/from/*", |req| {
+            let return_path = req.get_wildcard().unwrap_or_else(|| Bytes::new(env));
+            render_edit_form_with_return(env, &viewer, Some(return_path))
+        })
+        .or_handle(b"/edit", |_| render_edit_form_with_return(env, &viewer, None))
         .or_handle(b"/help", |_| render_help(env))
         // Handle profile with return path: /u/{username}/from/{return_path}
         .or_handle(b"/u/{username}/from/*", |req| {
@@ -100,13 +110,17 @@ fn render_home(env: &Env, viewer: &Option<Address>) -> Bytes {
     md.build()
 }
 
-/// Render the registration form.
-fn render_register_form(env: &Env, viewer: &Option<Address>) -> Bytes {
-    let mut md = MarkdownBuilder::new(env)
-        .h1("Register Profile")
-        .render_link("Back to Home", "/")
-        .newline()
-        .newline();
+/// Render the registration form with optional return path.
+fn render_register_form_with_return(
+    env: &Env,
+    viewer: &Option<Address>,
+    return_path: Option<Bytes>,
+) -> Bytes {
+    let mut md = MarkdownBuilder::new(env).h1("Register Profile");
+
+    // Use return path for back link if provided
+    md = render_back_link(env, md, &return_path);
+    md = md.newline().newline();
 
     if viewer.is_none() {
         return md
@@ -169,13 +183,17 @@ fn render_register_form(env: &Env, viewer: &Option<Address>) -> Bytes {
     md.build()
 }
 
-/// Render the profile edit form.
-fn render_edit_form(env: &Env, viewer: &Option<Address>) -> Bytes {
-    let mut md = MarkdownBuilder::new(env)
-        .h1("Edit Profile")
-        .render_link("Back to Home", "/")
-        .newline()
-        .newline();
+/// Render the profile edit form with optional return path.
+fn render_edit_form_with_return(
+    env: &Env,
+    viewer: &Option<Address>,
+    return_path: Option<Bytes>,
+) -> Bytes {
+    let mut md = MarkdownBuilder::new(env).h1("Edit Profile");
+
+    // Use return path for back link if provided
+    md = render_back_link(env, md, &return_path);
+    md = md.newline().newline();
 
     if viewer.is_none() {
         return md
@@ -313,6 +331,9 @@ fn render_profile_by_username_with_return(
 }
 
 /// Render a "Go Back" or "Back to Home" link based on return path.
+///
+/// Supports both same-contract paths (e.g., "b/0/t/5") and cross-contract
+/// return paths (e.g., "@registry:/").
 fn render_back_link<'a>(
     _env: &Env,
     md: MarkdownBuilder<'a>,
@@ -320,10 +341,19 @@ fn render_back_link<'a>(
 ) -> MarkdownBuilder<'a> {
     match return_path {
         Some(path) if !path.is_empty() => {
-            // Use the return path with "Go Back" text
-            md.raw_str("[Go Back](render:/")
-                .raw(path.clone())
-                .raw_str(")")
+            // Check if it's a cross-contract return path (starts with @)
+            let first_byte = path.get(0);
+            if first_byte == Some(b'@') {
+                // Cross-contract return - use path as-is (already includes @alias:path)
+                md.raw_str("[Go Back](render:")
+                    .raw(path.clone())
+                    .raw_str(")")
+            } else {
+                // Same-contract return - prepend /
+                md.raw_str("[Go Back](render:/")
+                    .raw(path.clone())
+                    .raw_str(")")
+            }
         }
         _ => {
             // Default to profile home
@@ -441,11 +471,20 @@ fn render_full_profile(
             // Show edit link if viewer is owner
             if let Some(viewer_addr) = viewer {
                 if *viewer_addr == p.owner {
-                    md = md
-                        .newline()
-                        .newline()
-                        .hr()
-                        .render_link("Edit Profile", "/edit");
+                    md = md.newline().newline().hr();
+
+                    // Include return path in edit link if present
+                    match &return_path {
+                        Some(path) if !path.is_empty() => {
+                            md = md
+                                .raw_str("[Edit Profile](render:/edit/from/")
+                                .raw(path.clone())
+                                .raw_str(")");
+                        }
+                        _ => {
+                            md = md.render_link("Edit Profile", "/edit");
+                        }
+                    }
                 }
             }
 
@@ -626,12 +665,37 @@ pub fn render_username(env: &Env, address: &Address) -> Bytes {
 /// - "Create Profile" link to registration if viewer has no profile
 /// - "Create Profile" link if no viewer is connected
 pub fn render_nav_link(env: &Env, viewer: &Option<Address>) -> Bytes {
+    render_nav_link_with_return(env, viewer, None)
+}
+
+/// Render nav link with optional return path for cross-contract navigation.
+///
+/// When `return_path` is provided (e.g., "@registry:/"), clicking the profile
+/// link will include the return path so the "Go Back" button on the profile
+/// page returns to the original application.
+pub fn render_nav_link_return(env: &Env, viewer: &Option<Address>, return_path: Bytes) -> Bytes {
+    render_nav_link_with_return(env, viewer, Some(return_path))
+}
+
+fn render_nav_link_with_return(
+    env: &Env,
+    viewer: &Option<Address>,
+    return_path: Option<Bytes>,
+) -> Bytes {
     match viewer {
         None => {
             // Not connected - show Create Profile link
-            MarkdownBuilder::new(env)
-                .raw_str("<a href=\"render:@profile:/register\">Create Profile</a>")
-                .build()
+            let mut md = MarkdownBuilder::new(env)
+                .raw_str("<a href=\"render:@profile:/register");
+
+            // Add return path if provided
+            if let Some(ref path) = return_path {
+                if !path.is_empty() {
+                    md = md.raw_str("/from/").raw(path.clone());
+                }
+            }
+
+            md.raw_str("\">Create Profile</a>").build()
         }
         Some(addr) => {
             // Check if they have a profile
@@ -643,19 +707,35 @@ pub fn render_nav_link(env: &Env, viewer: &Option<Address>) -> Bytes {
             match profile {
                 Some(p) if p.is_active() => {
                     // Has profile - show @username linking to their profile
-                    MarkdownBuilder::new(env)
+                    let mut md = MarkdownBuilder::new(env)
                         .raw_str("<a href=\"render:@profile:/u/")
-                        .raw(p.username.clone())
-                        .raw_str("\">@")
+                        .raw(p.username.clone());
+
+                    // Add return path if provided
+                    if let Some(ref path) = return_path {
+                        if !path.is_empty() {
+                            md = md.raw_str("/from/").raw(path.clone());
+                        }
+                    }
+
+                    md.raw_str("\">@")
                         .raw(p.username)
                         .raw_str("</a>")
                         .build()
                 }
                 _ => {
                     // No profile or deleted - show Create Profile link
-                    MarkdownBuilder::new(env)
-                        .raw_str("<a href=\"render:@profile:/register\">Create Profile</a>")
-                        .build()
+                    let mut md = MarkdownBuilder::new(env)
+                        .raw_str("<a href=\"render:@profile:/register");
+
+                    // Add return path if provided
+                    if let Some(ref path) = return_path {
+                        if !path.is_empty() {
+                            md = md.raw_str("/from/").raw(path.clone());
+                        }
+                    }
+
+                    md.raw_str("\">Create Profile</a>").build()
                 }
             }
         }

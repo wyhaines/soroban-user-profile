@@ -645,4 +645,13 @@ impl UserProfileContract {
     pub fn render_nav_link(env: Env, viewer: Option<Address>) -> Bytes {
         render::render_nav_link(&env, &viewer)
     }
+
+    /// Render a navigation link with return path for cross-contract navigation.
+    ///
+    /// When called from another contract (e.g., boards registry), pass the return
+    /// path (e.g., "@registry:/") so the "Go Back" button on the profile page
+    /// returns to the calling application instead of the profile home.
+    pub fn render_nav_link_return(env: Env, viewer: Option<Address>, return_path: Bytes) -> Bytes {
+        render::render_nav_link_return(&env, &viewer, return_path)
+    }
 }
