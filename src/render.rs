@@ -14,9 +14,15 @@ pub fn render(env: &Env, path: Option<String>, viewer: Option<Address>) -> Bytes
         .or_handle(b"/register", |_| render_register_form(env, &viewer))
         .or_handle(b"/edit", |_| render_edit_form(env, &viewer))
         .or_handle(b"/help", |_| render_help(env))
+        // Handle profile with return path: /u/{username}/from/{return_path}
+        .or_handle(b"/u/{username}/from/*", |req| {
+            let username = req.get_var(b"username").unwrap_or_else(|| Bytes::new(env));
+            let return_path = req.get_wildcard().unwrap_or_else(|| Bytes::new(env));
+            render_profile_by_username_with_return(env, &username, &viewer, Some(return_path))
+        })
         .or_handle(b"/u/*", |req| {
             let username = req.get_wildcard().unwrap_or_else(|| Bytes::new(env));
-            render_profile_by_username(env, &username, &viewer)
+            render_profile_by_username_with_return(env, &username, &viewer, None)
         })
         .or_handle(b"/a/*", |req| {
             let _addr_str = req.get_wildcard().unwrap_or_else(|| Bytes::new(env));
@@ -256,8 +262,13 @@ fn render_edit_form(env: &Env, viewer: &Option<Address>) -> Bytes {
     }
 }
 
-/// Render profile by username.
-fn render_profile_by_username(env: &Env, username: &Bytes, viewer: &Option<Address>) -> Bytes {
+/// Render profile by username with optional return path.
+fn render_profile_by_username_with_return(
+    env: &Env,
+    username: &Bytes,
+    viewer: &Option<Address>,
+    return_path: Option<Bytes>,
+) -> Bytes {
     // Look up address from username
     let address: Option<Address> = env
         .storage()
@@ -265,13 +276,33 @@ fn render_profile_by_username(env: &Env, username: &Bytes, viewer: &Option<Addre
         .get(&ProfileKey::Username(username.clone()));
 
     match address {
-        Some(addr) => render_full_profile(env, &addr, viewer),
+        Some(addr) => render_full_profile(env, &addr, viewer, return_path),
         None => {
-            MarkdownBuilder::new(env)
+            let mut md = MarkdownBuilder::new(env)
                 .h1("Profile Not Found")
-                .paragraph("No profile found with that username.")
-                .render_link("Back to Home", "/")
-                .build()
+                .paragraph("No profile found with that username.");
+            md = render_back_link(env, md, &return_path);
+            md.build()
+        }
+    }
+}
+
+/// Render a "Go Back" or "Back to Home" link based on return path.
+fn render_back_link<'a>(
+    _env: &Env,
+    md: MarkdownBuilder<'a>,
+    return_path: &Option<Bytes>,
+) -> MarkdownBuilder<'a> {
+    match return_path {
+        Some(path) if !path.is_empty() => {
+            // Use the return path with "Go Back" text
+            md.raw_str("[Go Back](render:/")
+                .raw(path.clone())
+                .raw_str(")")
+        }
+        _ => {
+            // Default to profile home
+            md.render_link("Back to Home", "/")
         }
     }
 }
@@ -285,8 +316,13 @@ fn render_profile_by_address_str(env: &Env, _viewer: &Option<Address>) -> Bytes 
         .build()
 }
 
-/// Render a full profile page.
-fn render_full_profile(env: &Env, address: &Address, viewer: &Option<Address>) -> Bytes {
+/// Render a full profile page with optional return path.
+fn render_full_profile(
+    env: &Env,
+    address: &Address,
+    viewer: &Option<Address>,
+    return_path: Option<Bytes>,
+) -> Bytes {
     let profile: Option<Profile> = env
         .storage()
         .persistent()
@@ -294,23 +330,21 @@ fn render_full_profile(env: &Env, address: &Address, viewer: &Option<Address>) -
 
     match profile {
         None => {
-            MarkdownBuilder::new(env)
-                .h1("Profile Not Found")
-                .render_link("Back to Home", "/")
-                .build()
+            let mut md = MarkdownBuilder::new(env).h1("Profile Not Found");
+            md = render_back_link(env, md, &return_path);
+            md.build()
         }
         Some(p) if !p.is_active() => {
-            MarkdownBuilder::new(env)
+            let mut md = MarkdownBuilder::new(env)
                 .h1("Profile Deleted")
-                .paragraph("This profile has been deleted.")
-                .render_link("Back to Home", "/")
-                .build()
+                .paragraph("This profile has been deleted.");
+            md = render_back_link(env, md, &return_path);
+            md.build()
         }
         Some(p) => {
-            let mut md = MarkdownBuilder::new(env)
-                .render_link("Back to Home", "/")
-                .newline()
-                .newline();
+            let mut md = MarkdownBuilder::new(env);
+            md = render_back_link(env, md, &return_path);
+            md = md.newline().newline();
 
             // Avatar if present
             if let Some(FieldValue::StringField(avatar)) = env
@@ -476,6 +510,19 @@ pub fn render_profile_card(env: &Env, address: &Address) -> Bytes {
 
 /// Render a compact profile card (for author attribution).
 pub fn render_profile_card_compact(env: &Env, address: &Address) -> Bytes {
+    render_profile_card_compact_with_return(env, address, None)
+}
+
+/// Render a compact profile card with optional return path.
+///
+/// When `return_path` is provided, clicking the profile link will include
+/// the return path so the "Go Back" button on the profile page returns
+/// to the original location.
+pub fn render_profile_card_compact_with_return(
+    env: &Env,
+    address: &Address,
+    return_path: Option<Bytes>,
+) -> Bytes {
     let profile: Option<Profile> = env
         .storage()
         .persistent()
@@ -484,11 +531,19 @@ pub fn render_profile_card_compact(env: &Env, address: &Address) -> Bytes {
     match profile {
         Some(p) if p.is_active() => {
             // Uses @profile alias for cross-contract navigation
-            MarkdownBuilder::new(env)
+            let mut md = MarkdownBuilder::new(env)
                 .raw_str("<span class=\"profile-compact\">")
                 .raw_str("<a href=\"render:@profile:/u/")
-                .raw(p.username.clone())
-                .raw_str("\">@")
+                .raw(p.username.clone());
+
+            // Add return path if provided
+            if let Some(ref path) = return_path {
+                if !path.is_empty() {
+                    md = md.raw_str("/from/").raw(path.clone());
+                }
+            }
+
+            md.raw_str("\">@")
                 .raw(p.username)
                 .raw_str("</a>")
                 .raw_str("</span>")

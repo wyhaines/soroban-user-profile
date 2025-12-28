@@ -622,6 +622,18 @@ impl UserProfileContract {
         render::render_profile_card_compact(&env, &address)
     }
 
+    /// Render a compact profile card with a return path.
+    ///
+    /// When the user clicks the profile link and then "Go Back",
+    /// they'll return to the specified path instead of profile home.
+    pub fn render_profile_compact_return(
+        env: Env,
+        address: Address,
+        return_path: Bytes,
+    ) -> Bytes {
+        render::render_profile_card_compact_with_return(&env, &address, Some(return_path))
+    }
+
     /// Render just the username (or truncated address).
     pub fn render_username(env: Env, address: Address) -> Bytes {
         render::render_username(&env, &address)
