@@ -42,13 +42,15 @@ pub use storage::ProfileKey;
 pub use validation::{validate_username, MAX_USERNAME_LENGTH, MIN_USERNAME_LENGTH};
 
 use soroban_sdk::{
-    contract, contractimpl, panic_with_error, Address, Bytes, BytesN, Env, Map, String, Symbol,
+    contract, contracterror, contractimpl, panic_with_error, Address, Bytes, BytesN, Env, Map,
+    String, Symbol,
 };
 
 use crate::events::*;
 use crate::storage::{PROFILE_TTL_EXTEND, PROFILE_TTL_THRESHOLD};
 
 /// Error codes for the user profile contract.
+#[contracterror]
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 #[repr(u32)]
 pub enum ProfileError {
@@ -72,12 +74,6 @@ pub enum ProfileError {
     ProfileDeleted = 9,
     /// Invalid field name.
     InvalidField = 10,
-}
-
-impl From<ProfileError> for soroban_sdk::Error {
-    fn from(e: ProfileError) -> Self {
-        soroban_sdk::Error::from_contract_error(e as u32)
-    }
 }
 
 #[contract]
@@ -125,8 +121,11 @@ impl UserProfileContract {
     /// - If username is already taken
     /// - If username is reserved
     /// - If caller already has a profile
-    pub fn register(env: Env, username: Bytes, display_name: String, caller: Address) -> bool {
+    pub fn register(env: Env, username: String, display_name: String, caller: Address) -> bool {
         caller.require_auth();
+
+        // Convert username String to Bytes for storage and validation
+        let username = soroban_render_sdk::bytes::string_to_bytes(&env, &username);
 
         // Check contract is initialized
         if !env.storage().instance().has(&ProfileKey::Admin) {
@@ -637,5 +636,13 @@ impl UserProfileContract {
     /// Render just the username (or truncated address).
     pub fn render_username(env: Env, address: Address) -> Bytes {
         render::render_username(&env, &address)
+    }
+
+    /// Render a navigation link for embedding in nav bars.
+    ///
+    /// Returns "@username" link if viewer has a profile,
+    /// or "Create Profile" link if they don't.
+    pub fn render_nav_link(env: Env, viewer: Option<Address>) -> Bytes {
+        render::render_nav_link(&env, &viewer)
     }
 }

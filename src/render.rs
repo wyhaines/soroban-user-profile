@@ -147,6 +147,7 @@ fn render_register_form(env: &Env, viewer: &Option<Address>) -> Bytes {
         .raw_str("<input type=\"hidden\" name=\"caller\" value=\"")
         .raw(address_to_bytes(env, viewer_addr))
         .raw_str("\" />\n")
+        .raw_str("<input type=\"hidden\" name=\"_redirect\" value=\"/edit\" />\n")
         .form_link("Register", "register")
         .newline();
 
@@ -577,6 +578,49 @@ pub fn render_username(env: &Env, address: &Address) -> Bytes {
             MarkdownBuilder::new(env)
                 .raw(truncate_address_bytes(env, address))
                 .build()
+        }
+    }
+}
+
+/// Render a navigation link for embedding in other contracts' nav bars.
+///
+/// Returns:
+/// - "@username" link to profile if viewer has a profile
+/// - "Create Profile" link to registration if viewer has no profile
+/// - "Create Profile" link if no viewer is connected
+pub fn render_nav_link(env: &Env, viewer: &Option<Address>) -> Bytes {
+    match viewer {
+        None => {
+            // Not connected - show Create Profile link
+            MarkdownBuilder::new(env)
+                .raw_str("<a href=\"render:@profile:/register\">Create Profile</a>")
+                .build()
+        }
+        Some(addr) => {
+            // Check if they have a profile
+            let profile: Option<Profile> = env
+                .storage()
+                .persistent()
+                .get(&ProfileKey::Profile(addr.clone()));
+
+            match profile {
+                Some(p) if p.is_active() => {
+                    // Has profile - show @username linking to their profile
+                    MarkdownBuilder::new(env)
+                        .raw_str("<a href=\"render:@profile:/u/")
+                        .raw(p.username.clone())
+                        .raw_str("\">@")
+                        .raw(p.username)
+                        .raw_str("</a>")
+                        .build()
+                }
+                _ => {
+                    // No profile or deleted - show Create Profile link
+                    MarkdownBuilder::new(env)
+                        .raw_str("<a href=\"render:@profile:/register\">Create Profile</a>")
+                        .build()
+                }
+            }
         }
     }
 }
