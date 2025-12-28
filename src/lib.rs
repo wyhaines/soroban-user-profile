@@ -165,7 +165,7 @@ impl UserProfileContract {
         }
 
         // Create profile
-        let timestamp = env.ledger().sequence() as u64;
+        let timestamp = env.ledger().timestamp();
         let profile = Profile::new(username.clone(), display_name, caller.clone(), timestamp);
 
         // Store username -> address mapping
@@ -318,7 +318,7 @@ impl UserProfileContract {
         }
 
         profile.display_name = display_name;
-        profile.updated_at = env.ledger().sequence() as u64;
+        profile.updated_at = env.ledger().timestamp();
 
         env.storage()
             .persistent()
@@ -395,7 +395,7 @@ impl UserProfileContract {
         }
 
         profile.deleted = true;
-        profile.updated_at = env.ledger().sequence() as u64;
+        profile.updated_at = env.ledger().timestamp();
 
         env.storage()
             .persistent()
@@ -439,7 +439,7 @@ impl UserProfileContract {
 
         // Update profile ownership
         profile.owner = new_owner.clone();
-        profile.updated_at = env.ledger().sequence() as u64;
+        profile.updated_at = env.ledger().timestamp();
 
         // Update username mapping
         env.storage()
@@ -529,7 +529,7 @@ impl UserProfileContract {
             .unwrap_or_else(|| panic_with_error!(&env, ProfileError::ProfileNotFound));
 
         profile.deleted = true;
-        profile.updated_at = env.ledger().sequence() as u64;
+        profile.updated_at = env.ledger().timestamp();
 
         env.storage()
             .persistent()
