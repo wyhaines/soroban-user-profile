@@ -112,7 +112,8 @@ if [ -f "$BOARDS_ENV" ]; then
             --network $NETWORK \
             -- set_contract \
             --alias profile \
-            --address $PROFILE_ID 2>&1 | grep -v "^ℹ" || true
+            --address $PROFILE_ID \
+            --caller $ADMIN 2>&1 | grep -v "^ℹ" || true
 
         echo -e "${GREEN}Profile contract registered as 'profile' alias${NC}"
 
