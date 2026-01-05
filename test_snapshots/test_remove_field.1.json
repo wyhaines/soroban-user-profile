@@ -34,7 +34,7 @@
               "function_name": "register",
               "args": [
                 {
-                  "bytes": "616c696365303031"
+                  "string": "alice001"
                 },
                 {
                   "string": "Alice"

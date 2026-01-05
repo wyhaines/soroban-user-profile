@@ -8,6 +8,7 @@ use soroban_sdk::{contracttype, Address, Bytes, String};
 /// while maintaining type safety.
 #[contracttype]
 #[derive(Clone, Debug)]
+#[allow(clippy::enum_variant_names)]
 pub enum FieldValue {
     /// String field (bio, avatar URL, etc.)
     StringField(String),

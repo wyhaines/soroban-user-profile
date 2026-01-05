@@ -3,7 +3,7 @@
 #![cfg(feature = "testutils")]
 
 use soroban_sdk::{testutils::Address as _, Address, Bytes, Env, String, Symbol};
-use soroban_user_profile::{Profile, ProfileError, UserProfileContract, UserProfileContractClient};
+use soroban_user_profile::{UserProfileContract, UserProfileContractClient};
 
 fn setup() -> (Env, UserProfileContractClient<'static>, Address) {
     let env = Env::default();
@@ -20,7 +20,7 @@ fn setup() -> (Env, UserProfileContractClient<'static>, Address) {
 
 #[test]
 fn test_init() {
-    let (env, client, admin) = setup();
+    let (_env, client, admin) = setup();
     assert_eq!(client.admin(), admin);
     assert_eq!(client.profile_count(), 0);
 }
@@ -29,7 +29,8 @@ fn test_init() {
 fn test_register_profile() {
     let (env, client, _admin) = setup();
     let user = Address::generate(&env);
-    let username = Bytes::from_slice(&env, b"alice001");
+    let username = String::from_str(&env, "alice001");
+    let username_bytes = Bytes::from_slice(&env, b"alice001");
     let display_name = String::from_str(&env, "Alice");
 
     let result = client.register(&username, &display_name, &user);
@@ -38,22 +39,21 @@ fn test_register_profile() {
     // Check profile count
     assert_eq!(client.profile_count(), 1);
 
-    // Get profile by username
-    let profile = client.get_by_username(&username).unwrap();
-    assert_eq!(profile.username, username);
+    // Get profile by username (uses Bytes)
+    let profile = client.get_by_username(&username_bytes).unwrap();
+    assert_eq!(profile.username, username_bytes);
     assert_eq!(profile.display_name, display_name);
     assert_eq!(profile.owner, user);
     assert!(!profile.deleted);
 
     // Get profile by address
     let profile2 = client.get_by_address(&user).unwrap();
-    assert_eq!(profile2.username, username);
+    assert_eq!(profile2.username, username_bytes);
 }
 
 #[test]
 fn test_username_validation() {
     let (env, client, _admin) = setup();
-    let user = Address::generate(&env);
 
     // Valid usernames
     assert!(client.is_username_available(&Bytes::from_slice(&env, b"abc123")));
@@ -71,22 +71,22 @@ fn test_username_validation() {
 fn test_username_uniqueness() {
     let (env, client, _admin) = setup();
     let user1 = Address::generate(&env);
-    let user2 = Address::generate(&env);
-    let username = Bytes::from_slice(&env, b"alice001");
+    let username = String::from_str(&env, "alice001");
+    let username_bytes = Bytes::from_slice(&env, b"alice001");
     let display_name = String::from_str(&env, "Alice");
 
     // First registration succeeds
     client.register(&username, &display_name, &user1);
 
     // Username should no longer be available
-    assert!(!client.is_username_available(&username));
+    assert!(!client.is_username_available(&username_bytes));
 }
 
 #[test]
 fn test_set_fields() {
     let (env, client, _admin) = setup();
     let user = Address::generate(&env);
-    let username = Bytes::from_slice(&env, b"alice001");
+    let username = String::from_str(&env, "alice001");
     let display_name = String::from_str(&env, "Alice");
 
     client.register(&username, &display_name, &user);
@@ -125,7 +125,7 @@ fn test_set_fields() {
 fn test_update_display_name() {
     let (env, client, _admin) = setup();
     let user = Address::generate(&env);
-    let username = Bytes::from_slice(&env, b"alice001");
+    let username = String::from_str(&env, "alice001");
     let display_name = String::from_str(&env, "Alice");
     let new_display_name = String::from_str(&env, "Alice Smith");
 
@@ -143,7 +143,8 @@ fn test_update_display_name() {
 fn test_delete_profile() {
     let (env, client, _admin) = setup();
     let user = Address::generate(&env);
-    let username = Bytes::from_slice(&env, b"alice001");
+    let username = String::from_str(&env, "alice001");
+    let username_bytes = Bytes::from_slice(&env, b"alice001");
     let display_name = String::from_str(&env, "Alice");
 
     client.register(&username, &display_name, &user);
@@ -153,10 +154,10 @@ fn test_delete_profile() {
 
     // Profile should not be returned (soft deleted)
     assert!(client.get_by_address(&user).is_none());
-    assert!(client.get_by_username(&username).is_none());
+    assert!(client.get_by_username(&username_bytes).is_none());
 
     // Username should still be unavailable (reserved)
-    assert!(!client.is_username_available(&username));
+    assert!(!client.is_username_available(&username_bytes));
 }
 
 #[test]
@@ -164,7 +165,8 @@ fn test_transfer_profile() {
     let (env, client, _admin) = setup();
     let user1 = Address::generate(&env);
     let user2 = Address::generate(&env);
-    let username = Bytes::from_slice(&env, b"alice001");
+    let username = String::from_str(&env, "alice001");
+    let username_bytes = Bytes::from_slice(&env, b"alice001");
     let display_name = String::from_str(&env, "Alice");
 
     client.register(&username, &display_name, &user1);
@@ -178,19 +180,17 @@ fn test_transfer_profile() {
     // New owner should have profile
     let profile = client.get_by_address(&user2).unwrap();
     assert_eq!(profile.owner, user2);
-    assert_eq!(profile.username, username);
+    assert_eq!(profile.username, username_bytes);
 
     // Username still resolves
-    let profile_by_name = client.get_by_username(&username).unwrap();
+    let profile_by_name = client.get_by_username(&username_bytes).unwrap();
     assert_eq!(profile_by_name.owner, user2);
 }
 
 #[test]
 fn test_reserve_username() {
     let (env, client, admin) = setup();
-    let user = Address::generate(&env);
     let reserved_username = Bytes::from_slice(&env, b"stellar123");
-    let display_name = String::from_str(&env, "User");
 
     // Reserve username
     client.reserve_username(&reserved_username, &admin);
@@ -214,7 +214,7 @@ fn test_unreserve_username() {
 
 #[test]
 fn test_registration_fee() {
-    let (env, client, admin) = setup();
+    let (_env, client, admin) = setup();
 
     // Set fee
     client.set_registration_fee(&1000, &admin);
@@ -227,7 +227,7 @@ fn test_registration_fee() {
 fn test_ban_profile() {
     let (env, client, admin) = setup();
     let user = Address::generate(&env);
-    let username = Bytes::from_slice(&env, b"alice001");
+    let username = String::from_str(&env, "alice001");
     let display_name = String::from_str(&env, "Alice");
 
     client.register(&username, &display_name, &user);
@@ -243,7 +243,7 @@ fn test_ban_profile() {
 fn test_remove_field() {
     let (env, client, _admin) = setup();
     let user = Address::generate(&env);
-    let username = Bytes::from_slice(&env, b"alice001");
+    let username = String::from_str(&env, "alice001");
     let display_name = String::from_str(&env, "Alice");
 
     client.register(&username, &display_name, &user);
