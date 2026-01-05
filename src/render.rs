@@ -1,7 +1,7 @@
 //! Render functions for the user profile contract.
 
-use soroban_sdk::{Address, Bytes, Env, String, Symbol};
 use soroban_render_sdk::prelude::*;
+use soroban_sdk::{Address, Bytes, Env, String, Symbol};
 
 use crate::fields::FieldValue;
 use crate::profile::Profile;
@@ -16,13 +16,17 @@ pub fn render(env: &Env, path: Option<String>, viewer: Option<Address>) -> Bytes
             let return_path = req.get_wildcard().unwrap_or_else(|| Bytes::new(env));
             render_register_form_with_return(env, &viewer, Some(return_path))
         })
-        .or_handle(b"/register", |_| render_register_form_with_return(env, &viewer, None))
+        .or_handle(b"/register", |_| {
+            render_register_form_with_return(env, &viewer, None)
+        })
         // Handle edit with return path: /edit/from/{return_path}
         .or_handle(b"/edit/from/*", |req| {
             let return_path = req.get_wildcard().unwrap_or_else(|| Bytes::new(env));
             render_edit_form_with_return(env, &viewer, Some(return_path))
         })
-        .or_handle(b"/edit", |_| render_edit_form_with_return(env, &viewer, None))
+        .or_handle(b"/edit", |_| {
+            render_edit_form_with_return(env, &viewer, None)
+        })
         .or_handle(b"/help", |_| render_help(env))
         // Handle profile with return path: /u/{username}/from/{return_path}
         .or_handle(b"/u/{username}/from/*", |req| {
@@ -63,7 +67,9 @@ fn render_home(env: &Env, viewer: &Option<Address>) -> Bytes {
     // Search form
     md = md
         .h2("Find Profile")
-        .raw_str("<input type=\"text\" name=\"username\" placeholder=\"Username (e.g., alice001)\" />\n")
+        .raw_str(
+            "<input type=\"text\" name=\"username\" placeholder=\"Username (e.g., alice001)\" />\n",
+        )
         .form_link("Search", "search_profile")
         .newline()
         .newline();
@@ -196,9 +202,7 @@ fn render_edit_form_with_return(
     md = md.newline().newline();
 
     if viewer.is_none() {
-        return md
-            .warning("Please connect your wallet.")
-            .build();
+        return md.warning("Please connect your wallet.").build();
     }
 
     let viewer_addr = viewer.as_ref().unwrap();
@@ -209,7 +213,9 @@ fn render_edit_form_with_return(
         .get(&ProfileKey::Profile(viewer_addr.clone()));
 
     match profile {
-        None => md.warning("No profile found. Please register first.").build(),
+        None => md
+            .warning("No profile found. Please register first.")
+            .build(),
         Some(p) if !p.is_active() => md.warning("Your profile has been deleted.").build(),
         Some(p) => {
             // Show timestamps
@@ -251,10 +257,9 @@ fn render_edit_form_with_return(
             ];
 
             for (field_name, label, placeholder) in fields.iter() {
-                let current: Option<FieldValue> = env
-                    .storage()
-                    .persistent()
-                    .get(&ProfileKey::Field(viewer_addr.clone(), Symbol::new(env, field_name)));
+                let current: Option<FieldValue> = env.storage().persistent().get(
+                    &ProfileKey::Field(viewer_addr.clone(), Symbol::new(env, field_name)),
+                );
 
                 md = md.h3(label);
 
@@ -406,15 +411,15 @@ fn render_full_profile(
             md = md.newline().newline();
 
             // Avatar if present
-            if let Some(FieldValue::StringField(avatar)) = env
-                .storage()
-                .persistent()
-                .get(&ProfileKey::Field(address.clone(), Symbol::new(env, "avatar")))
-            {
+            if let Some(FieldValue::StringField(avatar)) = env.storage().persistent().get(
+                &ProfileKey::Field(address.clone(), Symbol::new(env, "avatar")),
+            ) {
                 md = md
                     .raw_str("<img class=\"profile-avatar\" src=\"")
                     .text_string(&avatar)
-                    .raw_str("\" alt=\"Avatar\" style=\"width: 100px; border-radius: 50%;\" />\n\n");
+                    .raw_str(
+                        "\" alt=\"Avatar\" style=\"width: 100px; border-radius: 50%;\" />\n\n",
+                    );
             }
 
             // Name and username
@@ -446,11 +451,9 @@ fn render_full_profile(
             ];
 
             for (field_name, label) in fields.iter() {
-                if let Some(FieldValue::StringField(value)) = env
-                    .storage()
-                    .persistent()
-                    .get(&ProfileKey::Field(address.clone(), Symbol::new(env, field_name)))
-                {
+                if let Some(FieldValue::StringField(value)) = env.storage().persistent().get(
+                    &ProfileKey::Field(address.clone(), Symbol::new(env, field_name)),
+                ) {
                     md = md
                         .text("**")
                         .text(label)
@@ -543,23 +546,18 @@ pub fn render_profile_card(env: &Env, address: &Address) -> Bytes {
                 .raw_str("</div>")
                 .build()
         }
-        Some(p) if !p.is_active() => {
-            MarkdownBuilder::new(env)
-                .raw_str("<div class=\"profile-card profile-card-deleted\">")
-                .raw_str("<span class=\"profile-deleted\">[deleted]</span>")
-                .raw_str("</div>")
-                .build()
-        }
+        Some(p) if !p.is_active() => MarkdownBuilder::new(env)
+            .raw_str("<div class=\"profile-card profile-card-deleted\">")
+            .raw_str("<span class=\"profile-deleted\">[deleted]</span>")
+            .raw_str("</div>")
+            .build(),
         Some(p) => {
-            let mut md = MarkdownBuilder::new(env)
-                .raw_str("<div class=\"profile-card\">");
+            let mut md = MarkdownBuilder::new(env).raw_str("<div class=\"profile-card\">");
 
             // Avatar if present
-            if let Some(FieldValue::StringField(avatar)) = env
-                .storage()
-                .persistent()
-                .get(&ProfileKey::Field(address.clone(), Symbol::new(env, "avatar")))
-            {
+            if let Some(FieldValue::StringField(avatar)) = env.storage().persistent().get(
+                &ProfileKey::Field(address.clone(), Symbol::new(env, "avatar")),
+            ) {
                 md = md
                     .raw_str("<img class=\"profile-avatar\" src=\"")
                     .text_string(&avatar)
@@ -630,13 +628,11 @@ pub fn render_profile_card_compact_with_return(
                 .raw_str("</span>")
                 .build()
         }
-        _ => {
-            MarkdownBuilder::new(env)
-                .raw_str("<span class=\"profile-compact profile-anonymous\">")
-                .raw(truncate_address_bytes(env, address))
-                .raw_str("</span>")
-                .build()
-        }
+        _ => MarkdownBuilder::new(env)
+            .raw_str("<span class=\"profile-compact profile-anonymous\">")
+            .raw(truncate_address_bytes(env, address))
+            .raw_str("</span>")
+            .build(),
     }
 }
 
@@ -648,17 +644,10 @@ pub fn render_username(env: &Env, address: &Address) -> Bytes {
         .get(&ProfileKey::Profile(address.clone()));
 
     match profile {
-        Some(p) if p.is_active() => {
-            MarkdownBuilder::new(env)
-                .text("@")
-                .raw(p.username)
-                .build()
-        }
-        _ => {
-            MarkdownBuilder::new(env)
-                .raw(truncate_address_bytes(env, address))
-                .build()
-        }
+        Some(p) if p.is_active() => MarkdownBuilder::new(env).text("@").raw(p.username).build(),
+        _ => MarkdownBuilder::new(env)
+            .raw(truncate_address_bytes(env, address))
+            .build(),
     }
 }
 
@@ -689,8 +678,7 @@ fn render_nav_link_with_return(
     match viewer {
         None => {
             // Not connected - show Create Profile link
-            let mut md = MarkdownBuilder::new(env)
-                .raw_str("<a href=\"render:@profile:/register");
+            let mut md = MarkdownBuilder::new(env).raw_str("<a href=\"render:@profile:/register");
 
             // Add return path if provided
             if let Some(ref path) = return_path {
@@ -722,15 +710,12 @@ fn render_nav_link_with_return(
                         }
                     }
 
-                    md.raw_str("\">@")
-                        .raw(p.username)
-                        .raw_str("</a>")
-                        .build()
+                    md.raw_str("\">@").raw(p.username).raw_str("</a>").build()
                 }
                 _ => {
                     // No profile or deleted - show Create Profile link
-                    let mut md = MarkdownBuilder::new(env)
-                        .raw_str("<a href=\"render:@profile:/register");
+                    let mut md =
+                        MarkdownBuilder::new(env).raw_str("<a href=\"render:@profile:/register");
 
                     // Add return path if provided
                     if let Some(ref path) = return_path {

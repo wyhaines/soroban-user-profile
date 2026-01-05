@@ -131,7 +131,10 @@ mod tests {
         assert!(validate_username(&Bytes::from_slice(&env, b"abc123")));
         assert!(validate_username(&Bytes::from_slice(&env, b"alice001")));
         assert!(validate_username(&Bytes::from_slice(&env, b"bob_smith123")));
-        assert!(validate_username(&Bytes::from_slice(&env, b"crypto_fan_999")));
+        assert!(validate_username(&Bytes::from_slice(
+            &env,
+            b"crypto_fan_999"
+        )));
         assert!(validate_username(&Bytes::from_slice(
             &env,
             b"abcdefghijklmn123"

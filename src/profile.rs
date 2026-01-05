@@ -30,12 +30,7 @@ pub struct Profile {
 
 impl Profile {
     /// Create a new profile.
-    pub fn new(
-        username: Bytes,
-        display_name: String,
-        owner: Address,
-        created_at: u64,
-    ) -> Self {
+    pub fn new(username: Bytes, display_name: String, owner: Address, created_at: u64) -> Self {
         Self {
             username,
             display_name,

@@ -63,7 +63,8 @@ fn test_username_validation() {
     // Invalid usernames (format fails)
     assert!(!client.is_username_available(&Bytes::from_slice(&env, b"ab123"))); // too short
     assert!(!client.is_username_available(&Bytes::from_slice(&env, b"ABC123"))); // uppercase
-    assert!(!client.is_username_available(&Bytes::from_slice(&env, b"123abc"))); // starts with digits
+    assert!(!client.is_username_available(&Bytes::from_slice(&env, b"123abc")));
+    // starts with digits
 }
 
 #[test]
@@ -111,7 +112,9 @@ fn test_set_fields() {
 
     // Set bool field
     client.set_bool_field(&Symbol::new(&env, "hiring"), &true, &user);
-    let hiring = client.get_field(&user, &Symbol::new(&env, "hiring")).unwrap();
+    let hiring = client
+        .get_field(&user, &Symbol::new(&env, "hiring"))
+        .unwrap();
     match hiring {
         soroban_user_profile::FieldValue::BoolField(b) => assert!(b),
         _ => panic!("Expected BoolField"),

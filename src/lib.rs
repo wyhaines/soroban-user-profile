@@ -93,7 +93,9 @@ impl UserProfileContract {
 
         admin.require_auth();
         env.storage().instance().set(&ProfileKey::Admin, &admin);
-        env.storage().instance().set(&ProfileKey::ProfileCount, &0u64);
+        env.storage()
+            .instance()
+            .set(&ProfileKey::ProfileCount, &0u64);
     }
 
     /// Get the admin address.
@@ -273,7 +275,11 @@ impl UserProfileContract {
     ///
     /// Note: This returns only fields that have been explicitly set.
     /// For efficiency, field names must be provided.
-    pub fn get_fields(env: Env, address: Address, field_names: soroban_sdk::Vec<Symbol>) -> Map<Symbol, FieldValue> {
+    pub fn get_fields(
+        env: Env,
+        address: Address,
+        field_names: soroban_sdk::Vec<Symbol>,
+    ) -> Map<Symbol, FieldValue> {
         let mut result = Map::new(&env);
 
         for field in field_names.iter() {
@@ -625,11 +631,7 @@ impl UserProfileContract {
     ///
     /// When the user clicks the profile link and then "Go Back",
     /// they'll return to the specified path instead of profile home.
-    pub fn render_profile_compact_return(
-        env: Env,
-        address: Address,
-        return_path: Bytes,
-    ) -> Bytes {
+    pub fn render_profile_compact_return(env: Env, address: Address, return_path: Bytes) -> Bytes {
         render::render_profile_card_compact_with_return(&env, &address, Some(return_path))
     }
 
