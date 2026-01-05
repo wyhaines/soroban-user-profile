@@ -6,7 +6,6 @@ use soroban_sdk::{contracttype, Address, Bytes, String};
 ///
 /// This enum allows storing different types of values in profile fields
 /// while maintaining type safety.
-#[allow(clippy::enum_variant_names)]
 #[contracttype]
 #[derive(Clone, Debug)]
 pub enum FieldValue {
