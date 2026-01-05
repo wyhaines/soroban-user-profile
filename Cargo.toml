@@ -19,7 +19,7 @@ testutils = ["soroban-sdk/testutils"]
 
 [dependencies]
 soroban-sdk = "22.0.0"
-soroban-render-sdk = { path = "/media/wyhaines/home/wyhaines/ghq/github.com/wyhaines/soroban-render-sdk", optional = true }
+soroban-render-sdk = { version = "0.1", optional = true }
 
 [dev-dependencies]
 soroban-sdk = { version = "22.0.0", features = ["testutils"] }
