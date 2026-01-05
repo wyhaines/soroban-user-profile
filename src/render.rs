@@ -856,13 +856,13 @@ fn format_timestamp(env: &Env, timestamp: u64) -> Bytes {
     buffer[4] = b'-';
 
     // Month (2 digits)
-    buffer[5] = b'0' + ((month / 10) % 10) as u8;
-    buffer[6] = b'0' + (month % 10) as u8;
+    buffer[5] = b'0' + ((month / 10) % 10);
+    buffer[6] = b'0' + (month % 10);
     buffer[7] = b'-';
 
     // Day (2 digits)
-    buffer[8] = b'0' + ((day / 10) % 10) as u8;
-    buffer[9] = b'0' + (day % 10) as u8;
+    buffer[8] = b'0' + ((day / 10) % 10);
+    buffer[9] = b'0' + (day % 10);
     buffer[10] = b' ';
 
     // Hours (2 digits)

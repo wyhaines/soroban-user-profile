@@ -35,7 +35,7 @@ pub fn validate_username(username: &Bytes) -> bool {
     let len = username.len();
 
     // Check length bounds
-    if len < MIN_USERNAME_LENGTH || len > MAX_USERNAME_LENGTH {
+    if !(MIN_USERNAME_LENGTH..=MAX_USERNAME_LENGTH).contains(&len) {
         return false;
     }
 
@@ -69,13 +69,13 @@ pub fn validate_username(username: &Bytes) -> bool {
 /// Check if a byte is a lowercase ASCII letter (a-z).
 #[inline]
 fn is_lowercase_letter(b: u8) -> bool {
-    b >= b'a' && b <= b'z'
+    b.is_ascii_lowercase()
 }
 
 /// Check if a byte is an ASCII digit (0-9).
 #[inline]
 fn is_digit(b: u8) -> bool {
-    b >= b'0' && b <= b'9'
+    b.is_ascii_digit()
 }
 
 /// Check if a byte is valid for the middle portion of a username.
@@ -89,9 +89,10 @@ fn is_valid_middle_char(b: u8) -> bool {
 ///
 /// This converts any uppercase letters to lowercase. Returns None if
 /// the input contains invalid characters that would still fail validation.
+#[allow(dead_code)]
 pub fn normalize_username(username: &Bytes) -> Option<Bytes> {
     let len = username.len();
-    if len < MIN_USERNAME_LENGTH || len > MAX_USERNAME_LENGTH {
+    if !(MIN_USERNAME_LENGTH..=MAX_USERNAME_LENGTH).contains(&len) {
         return None;
     }
 
@@ -101,7 +102,7 @@ pub fn normalize_username(username: &Bytes) -> Option<Bytes> {
         let b = username.get(i).unwrap();
         // Only allow chars that are valid when lowercased
         let valid = is_lowercase_letter(b)
-            || (b >= b'A' && b <= b'Z') // uppercase that can be lowercased
+            || b.is_ascii_uppercase() // uppercase that can be lowercased
             || is_digit(b)
             || b == b'_';
         if !valid {
